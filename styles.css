@@ -359,6 +359,18 @@ textarea {
   min-height: 74px;
 }
 
+.choice-main,
+.choice-pinyin {
+  display: block;
+}
+
+.choice-pinyin {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+
 .choice-btn.selected {
   border-color: var(--brand);
   background: #e5f3f0;
