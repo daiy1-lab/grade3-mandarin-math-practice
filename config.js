@@ -1,0 +1,1 @@
+window.GOOGLE_SHEET_WEB_APP_URL = "";

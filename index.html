@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>三年级练习站</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">三年级课堂练习</p>
+        <h1>语文和数学练习</h1>
+      </div>
+      <div class="nav-stack">
+        <nav class="tabs" aria-label="科目导航">
+          <button class="tab active" data-subject="home" data-view="home">主页面</button>
+          <button class="tab" data-subject="vocab" data-view="practice">中文词语</button>
+          <button class="tab" data-subject="math" data-view="math">数学练习</button>
+          <button class="tab" data-subject="profile" data-view="profile">我的练习情况</button>
+        </nav>
+        <nav class="tabs vocab-tabs hidden" id="vocab-tabs" aria-label="中文词语导航">
+          <button class="tab" data-vocab-tab="teacher" data-view="teacher">教师词语表</button>
+          <button class="tab" data-vocab-tab="dashboard" data-view="dashboard">全班记录</button>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="view active" id="home-view">
+        <div class="home-grid">
+          <button class="home-option" type="button" data-home-view="practice">
+            <span class="home-icon">文</span>
+            <strong>中文词语</strong>
+            <span>看意思、选拼音、听写、选对的用法</span>
+          </button>
+          <button class="home-option" type="button" data-home-view="math">
+            <span class="home-icon">数</span>
+            <strong>数学练习</strong>
+            <span>加法、减法、乘法、除法</span>
+          </button>
+          <button class="home-option" type="button" data-home-view="profile">
+            <span class="home-icon">我</span>
+            <strong>我的练习情况</strong>
+            <span>看看哪些词语和题型要多练</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="view" id="practice-view">
+        <div class="practice-shell">
+          <aside class="panel setup-panel">
+            <p id="setup-warning" class="setup-warning" role="alert"></p>
+            <label>
+              学生号码
+              <input id="student-id-input" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="例：1号写01，11号写11" />
+            </label>
+            <label>
+              单元
+              <select id="unit-select"></select>
+            </label>
+            <div>
+              <span class="label-title">点一种练习开始</span>
+              <div class="mode-grid" id="mode-grid"></div>
+            </div>
+          </aside>
+
+          <section class="quiz-panel" aria-live="polite">
+            <div class="quiz-status">
+              <span id="quiz-mode">请选择练习</span>
+              <span id="quiz-progress">0 / 0</span>
+            </div>
+            <div class="question-box">
+              <p id="question-label" class="question-label">准备好后开始。</p>
+              <h2 id="question-text">先选学生、单元和练习</h2>
+              <p id="tone-song" class="tone-song hidden">声调位置歌：有 a 在给 a 戴，a 不在，o e 戴，要是 i u 一起来，谁在后面给谁戴。</p>
+              <button id="speak-btn" class="icon-btn hidden" aria-label="播放声音" title="播放声音">▶</button>
+            </div>
+            <div id="answer-area" class="answer-area"></div>
+            <p id="feedback" class="feedback" role="status"></p>
+            <div class="quiz-actions">
+              <button id="check-btn" class="primary-btn" disabled>确定</button>
+              <button id="next-btn" class="secondary-btn" disabled>下一题</button>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="math-view">
+        <div class="math-layout">
+          <aside class="panel setup-panel">
+            <label>
+              学生号码
+              <input id="math-student-id-input" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="例：1号写01，11号写11" />
+            </label>
+            <div>
+              <span class="label-title">选加减乘除</span>
+              <div class="operation-grid" id="math-operation-grid"></div>
+            </div>
+            <div>
+              <span class="label-title">选择练习</span>
+              <div class="topic-grid" id="math-topic-grid"></div>
+            </div>
+          </aside>
+
+          <section class="quiz-panel math-quiz-panel" aria-live="polite">
+            <div class="quiz-status">
+              <span id="math-mode">请选择数学练习</span>
+              <span id="math-progress">0 / 0</span>
+            </div>
+            <div class="question-box math-question-box">
+              <p id="math-question-label" class="question-label">先选择一个练习。</p>
+              <h2 id="math-question-text">数学练习</h2>
+            </div>
+            <div class="math-answer-row">
+              <input id="math-answer" class="text-answer" inputmode="numeric" autocomplete="off" placeholder="请输入答案" />
+            </div>
+            <div id="math-feedback" class="feedback" role="status"></div>
+            <div class="quiz-actions">
+              <button id="math-check-btn" class="primary-btn" disabled>确定</button>
+              <button id="math-next-btn" class="secondary-btn" disabled>下一题</button>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="profile-view">
+        <div class="dashboard-header">
+          <div>
+            <p class="eyebrow">我的记录</p>
+            <h2>我的练习情况</h2>
+          </div>
+          <div class="profile-search">
+            <input id="profile-student-input" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="例：01" />
+            <button id="profile-refresh-btn" class="primary-btn" type="button">查看</button>
+          </div>
+        </div>
+        <p id="profile-message" class="setup-warning" role="alert"></p>
+        <div class="stats-grid">
+          <section class="metric"><span id="profile-total">0</span><p>我做了几题</p></section>
+          <section class="metric"><span id="profile-accuracy">0%</span><p>我的答对率</p></section>
+          <section class="metric"><span id="profile-rank">-</span><p>超过全班同学</p></section>
+        </div>
+        <section class="profile-grid">
+          <div class="panel">
+            <h3>中文要多练</h3>
+            <div id="profile-vocab-list" class="need-list"></div>
+          </div>
+          <div class="panel">
+            <h3>数学要多练</h3>
+            <div id="profile-math-list" class="need-list"></div>
+          </div>
+        </section>
+        <section class="panel">
+          <h3>最近错过的题</h3>
+          <div id="profile-recent-list" class="need-list"></div>
+        </section>
+      </section>
+
+      <section class="view" id="teacher-view">
+        <div class="teacher-layout">
+          <section class="panel">
+            <h2>输入词语</h2>
+            <p class="help">每行一个词。可直接修改示例，再点击“导入词语”。</p>
+            <textarea id="vocab-input" spellcheck="false"></textarea>
+            <div class="teacher-actions">
+              <button id="import-btn" class="primary-btn">导入词语</button>
+              <button id="sample-btn" class="secondary-btn">填入例子</button>
+              <button id="download-vocab-btn" class="secondary-btn">导出词语</button>
+            </div>
+          </section>
+          <section class="panel">
+            <h2>输入格式</h2>
+            <div class="format-box">
+              <code>单元,词语,拼音,意思（用三年级能懂的话）,反义词,词性,词语搭配</code>
+            </div>
+            <p class="help">每行 7 项，用英文逗号分开。反义词、词语搭配可用“|”分开多个。意思请写成孩子容易懂的一句话。词性可以写“动词、形容词、名词”。</p>
+            <h3>学生名单</h3>
+            <textarea id="student-input" spellcheck="false"></textarea>
+            <button id="save-students-btn" class="primary-btn">保存名单</button>
+          </section>
+          <section class="panel recording-panel">
+            <div class="recording-header">
+              <div>
+                <h2>词语录音</h2>
+                <p class="help">每个词录一次。听写题会先播放这里保存的录音。</p>
+              </div>
+              <select id="recording-unit-filter" aria-label="选择录音单元"></select>
+            </div>
+            <p id="recording-message" class="recording-message"></p>
+            <div id="recording-list" class="recording-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="dashboard-view">
+        <div class="dashboard-header">
+          <div>
+            <p class="eyebrow">答题记录</p>
+            <h2>全班练习情况</h2>
+          </div>
+          <div class="dashboard-actions">
+            <button id="export-csv-btn" class="secondary-btn">导出表格</button>
+            <button id="reset-data-btn" class="danger-btn">清空记录</button>
+          </div>
+        </div>
+        <div class="stats-grid">
+          <section class="metric"><span id="total-attempts">0</span><p>答题次数</p></section>
+          <section class="metric"><span id="overall-accuracy">0%</span><p>全班答对率</p></section>
+          <section class="metric"><span id="needs-review">0</span><p>要多练的词语</p></section>
+        </div>
+        <section class="panel">
+          <h3>每个学生的情况</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>学生</th><th>答题</th><th>答对</th><th>答错</th><th>答对率</th></tr></thead>
+              <tbody id="student-stats"></tbody>
+            </table>
+          </div>
+        </section>
+        <section class="panel">
+          <h3>哪些词最容易错</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>词语</th><th>单元</th><th>错了几次</th><th>哪种题</th></tr></thead>
+              <tbody id="word-stats"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <template id="choice-template">
+      <button class="choice-btn" type="button"></button>
+    </template>
+
+    <div id="teacher-password-modal" class="password-modal hidden" role="dialog" aria-modal="true" aria-labelledby="password-title">
+      <div class="password-box">
+        <h2 id="password-title">教师密码</h2>
+        <p class="help">请输入密码，进入教师词语表。</p>
+        <input id="teacher-password-input" type="password" autocomplete="off" />
+        <p id="teacher-password-message" class="password-message"></p>
+        <div class="password-actions">
+          <button id="teacher-password-submit" class="primary-btn" type="button">确定</button>
+          <button id="teacher-password-cancel" class="secondary-btn" type="button">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
