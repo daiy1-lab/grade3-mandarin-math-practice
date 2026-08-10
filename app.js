@@ -985,8 +985,7 @@ function startQuiz() {
 }
 
 function buildPracticeItems(pool) {
-  const shuffled = shuffle(pool);
-  return Array.from({ length: QUESTIONS_PER_PRACTICE }, (_, index) => shuffled[index % shuffled.length]);
+  return shuffle(pool);
 }
 
 function nextQuestion() {
@@ -1010,7 +1009,7 @@ function nextQuestion() {
 function finishVocabPractice() {
   quiz.finished = true;
   quiz.current = null;
-  $("#quiz-progress").textContent = `${QUESTIONS_PER_PRACTICE} / ${QUESTIONS_PER_PRACTICE}`;
+  $("#quiz-progress").textContent = `${quiz.items.length} / ${quiz.items.length}`;
   $("#feedback").textContent = "恭喜你完成本练习！请你选择下一个！";
   $("#feedback").className = "feedback ok";
   $("#question-label").textContent = "练习完成";
