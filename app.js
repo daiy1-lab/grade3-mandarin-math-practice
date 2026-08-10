@@ -562,9 +562,9 @@ function choicePinyin(choice) {
   return typeof choice === "object" ? choice.pinyin : "";
 }
 
-function meaningChoice(value, pinyin) {
+function meaningChoice(value) {
   const text = String(value || "");
-  return { value: text, text, pinyin: pinyinForMeaningChoice(text, pinyin) };
+  return { value: text, text, kind: "meaning" };
 }
 
 function pinyinForMeaningChoice(value, fallback = "") {
@@ -584,6 +584,28 @@ function uniqueMeaningChoices(choices) {
     seen.add(key);
     return true;
   });
+}
+
+function annotatedMeaningHtml(text) {
+  const source = String(text || "");
+  const converter = window.pinyinPro && window.pinyinPro.pinyin;
+  if (!converter) return escapeHtml(source);
+
+  try {
+    const parts = converter(source, { type: "all", toneType: "symbol" });
+    if (!Array.isArray(parts)) return escapeHtml(source);
+    return parts
+      .map((part) => {
+        const char = part.origin || "";
+        if (/[\u4e00-\u9fff]/.test(char) && part.pinyin) {
+          return `<ruby class="hanzi-ruby"><span class="ruby-char">${escapeHtml(char)}</span><rt>${escapeHtml(part.pinyin)}</rt></ruby>`;
+        }
+        return `<span class="meaning-punctuation">${escapeHtml(char)}</span>`;
+      })
+      .join("");
+  } catch {
+    return escapeHtml(source);
+  }
 }
 
 function buildCollocationDistractors(item, correct) {
@@ -1008,11 +1030,11 @@ function buildQuestion(item, mode) {
     const sameUnitItems = shuffle(vocab.filter((v) => v.unit === item.unit && v.word !== item.word));
     const otherItems = shuffle(vocab.filter((v) => v.unit !== item.unit && v.word !== item.word));
     const choices = uniqueMeaningChoices([
-      meaningChoice(item.meaning, item.pinyin),
-      meaningChoice(oppositeChoice, vocab.find((v) => v.word === oppositeChoice)?.pinyin || item.pinyin),
-      ...sameUnitItems.map((v) => meaningChoice(v.meaning, v.pinyin)),
-      ...otherItems.map((v) => meaningChoice(v.meaning, v.pinyin)),
-      ...MEANING_BACKUPS.map((meaning) => meaningChoice(meaning, item.pinyin)),
+      meaningChoice(item.meaning),
+      meaningChoice(oppositeChoice),
+      ...sameUnitItems.map((v) => meaningChoice(v.meaning)),
+      ...otherItems.map((v) => meaningChoice(v.meaning)),
+      ...MEANING_BACKUPS.map((meaning) => meaningChoice(meaning)),
     ]).filter((choice, index) => index === 0 || normalizeText(choice.value) !== normalizeText(item.meaning));
     return { item, mode, prompt: item.word, label: "选出这个词的意思", answer: item.meaning, choices: shuffle([choices[0], ...choices.slice(1, 4)]) };
   }
@@ -1413,7 +1435,12 @@ function renderQuestion() {
   question.choices.forEach((choice) => {
     const button = $("#choice-template").content.firstElementChild.cloneNode(true);
     const pinyin = choicePinyin(choice);
-    button.innerHTML = pinyin ? `<span class="choice-main">${escapeHtml(choiceText(choice))}</span><span class="choice-pinyin">${escapeHtml(pinyin)}</span>` : escapeHtml(choiceText(choice));
+    if (question.mode === "meaning") {
+      button.classList.add("meaning-choice-btn");
+      button.innerHTML = annotatedMeaningHtml(choiceText(choice));
+    } else {
+      button.innerHTML = pinyin ? `<span class="choice-main">${escapeHtml(choiceText(choice))}</span><span class="choice-pinyin">${escapeHtml(pinyin)}</span>` : escapeHtml(choiceText(choice));
+    }
     button.dataset.value = choiceValue(choice);
     button.addEventListener("click", () => {
       if (quiz.locked) return;

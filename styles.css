@@ -371,6 +371,36 @@ textarea {
   font-weight: 700;
 }
 
+.meaning-choice-btn {
+  align-items: flex-start;
+  line-height: 1.5;
+  padding-top: 1.35rem;
+}
+
+.hanzi-ruby {
+  display: inline-flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  margin: 0 0.04em;
+  vertical-align: bottom;
+}
+
+.hanzi-ruby rt {
+  color: var(--muted);
+  font-size: 0.68em;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.ruby-char {
+  display: inline-block;
+}
+
+.meaning-punctuation {
+  display: inline-block;
+  margin: 0 0.08em;
+}
+
 .choice-btn.selected {
   border-color: var(--brand);
   background: #e5f3f0;
