@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>三年级练习站</title>
-    <link rel="stylesheet" href="styles.css?v=20260810-ruby-pinyin" />
+    <link rel="stylesheet" href="styles.css?v=20260830-audio-export" />
   </head>
   <body>
     <header class="topbar">
@@ -18,6 +18,7 @@
           <button class="tab" data-subject="vocab" data-view="practice">中文词语</button>
           <button class="tab" data-subject="math" data-view="math">数学练习</button>
           <button class="tab" data-subject="profile" data-view="profile">我的练习情况</button>
+          <button class="tab" data-subject="dashboard" data-view="dashboard">全班情况</button>
         </nav>
         <nav class="tabs vocab-tabs hidden" id="vocab-tabs" aria-label="中文词语导航">
           <button class="tab" data-vocab-tab="teacher" data-view="teacher">教师词语表</button>
@@ -43,6 +44,11 @@
             <span class="home-icon">我</span>
             <strong>我的练习情况</strong>
             <span>看看哪些词语和题型要多练</span>
+          </button>
+          <button class="home-option" type="button" data-home-view="dashboard">
+            <span class="home-icon">班</span>
+            <strong>全班情况</strong>
+            <span>查看全班答题和需要多练的内容</span>
           </button>
         </div>
       </section>
@@ -185,7 +191,10 @@
                 <h2>词语录音</h2>
                 <p class="help">每个词录一次。听写题会先播放这里保存的录音。</p>
               </div>
-              <select id="recording-unit-filter" aria-label="选择录音单元"></select>
+              <div class="recording-tools">
+                <select id="recording-unit-filter" aria-label="选择录音单元"></select>
+                <button id="export-recordings-btn" class="secondary-btn" type="button">导出录音包</button>
+              </div>
             </div>
             <p id="recording-message" class="recording-message"></p>
             <div id="recording-list" class="recording-list"></div>
@@ -200,10 +209,12 @@
             <h2>全班练习情况</h2>
           </div>
           <div class="dashboard-actions">
+            <button id="refresh-dashboard-btn" class="primary-btn">刷新记录</button>
             <button id="export-csv-btn" class="secondary-btn">导出表格</button>
             <button id="reset-data-btn" class="danger-btn">清空记录</button>
           </div>
         </div>
+        <p id="dashboard-message" class="setup-warning" role="status"></p>
         <div class="stats-grid">
           <section class="metric"><span id="total-attempts">0</span><p>答题次数</p></section>
           <section class="metric"><span id="overall-accuracy">0%</span><p>全班答对率</p></section>
@@ -248,7 +259,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.28.2/dist/index.js"></script>
-    <script src="config.js?v=20260810-ruby-pinyin"></script>
-    <script src="app.js?v=20260810-ruby-pinyin"></script>
+    <script src="config.js?v=20260830-audio-export"></script>
+    <script src="app.js?v=20260830-audio-export"></script>
   </body>
 </html>

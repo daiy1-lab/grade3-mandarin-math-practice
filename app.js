@@ -665,7 +665,7 @@ function showView(view) {
   const isVocabView = ["practice", "teacher", "dashboard"].includes(view);
   $("#vocab-tabs").classList.toggle("hidden", !isVocabView);
 
-  const subject = view === "math" ? "math" : view === "profile" ? "profile" : isVocabView ? "vocab" : "home";
+  const subject = view === "math" ? "math" : view === "profile" ? "profile" : view === "dashboard" ? "dashboard" : isVocabView ? "vocab" : "home";
   const subjectTab = $(`[data-subject="${subject}"]`);
   if (subjectTab) subjectTab.classList.add("active");
 
@@ -832,6 +832,8 @@ function bindEvents() {
   $("#download-vocab-btn").addEventListener("click", () => downloadFile("三年级词库.csv", serializeVocab(vocab)));
   $("#recording-unit-filter").addEventListener("change", renderRecordingList);
   $("#recording-list").addEventListener("click", handleRecordingClick);
+  $("#export-recordings-btn").addEventListener("click", exportRecordingsZip);
+  $("#refresh-dashboard-btn").addEventListener("click", renderDashboard);
   $("#export-csv-btn").addEventListener("click", exportAttempts);
   $("#reset-data-btn").addEventListener("click", resetAttempts);
   $("#math-check-btn").addEventListener("click", checkMathAnswer);
@@ -1577,6 +1579,17 @@ async function listAudioKeys() {
   });
 }
 
+async function listAudioRecords() {
+  const db = await openAudioDb();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(AUDIO_STORE_NAME, "readonly");
+    const request = transaction.objectStore(AUDIO_STORE_NAME).getAll();
+    request.addEventListener("success", () => resolve(request.result || []));
+    request.addEventListener("error", () => reject(request.error));
+    transaction.addEventListener("complete", () => db.close());
+  });
+}
+
 async function playSavedAudio(key) {
   const blob = await getAudioBlob(key);
   if (!blob) return false;
@@ -1594,7 +1607,79 @@ async function playWordAudio(item) {
   } catch {
     // If a saved recording cannot play, fall back to browser speech.
   }
+  try {
+    if (item && (await playOnlineAudio(item))) return;
+  } catch {
+    // If an uploaded recording cannot play, fall back to browser speech.
+  }
   speak(item?.word || "");
+}
+
+async function playOnlineAudio(item) {
+  const candidates = ["webm", "mp3", "m4a", "wav", "ogg"].map((extension) => audioUrl(item, extension));
+  for (const url of candidates) {
+    try {
+      if (await playAudioUrl(url)) return true;
+    } catch {
+      // Try the next possible audio extension.
+    }
+  }
+  return false;
+}
+
+function audioUrl(item, extension) {
+  return `audio/${encodeURIComponent(item.unit)}/${encodeURIComponent(item.word)}.${extension}`;
+}
+
+function playAudioUrl(url) {
+  return new Promise((resolve, reject) => {
+    const audio = new Audio(url);
+    audio.preload = "auto";
+    audio.addEventListener("canplaythrough", async () => {
+      try {
+        await audio.play();
+        resolve(true);
+      } catch (error) {
+        reject(error);
+      }
+    }, { once: true });
+    audio.addEventListener("error", () => reject(new Error("Audio not found")), { once: true });
+    audio.load();
+  });
+}
+
+async function exportRecordingsZip() {
+  try {
+    const records = await listAudioRecords();
+    const validRecords = records.filter((record) => record?.key && record.blob);
+    if (!validRecords.length) {
+      setRecordingMessage("还没有录音可以导出。");
+      return;
+    }
+    const files = [];
+    for (const record of validRecords) {
+      const [unit, word] = String(record.key).split("::");
+      if (!unit || !word) continue;
+      const bytes = new Uint8Array(await record.blob.arrayBuffer());
+      files.push({
+        name: `audio/${unit}/${word}.${audioExtension(record.blob.type)}`,
+        bytes,
+      });
+    }
+    const zipBlob = createZipBlob(files);
+    downloadBlob("recordings.zip", zipBlob);
+    setRecordingMessage(`已导出 ${files.length} 个录音。请解压后把 audio 文件夹上传到 GitHub。`);
+  } catch {
+    setRecordingMessage("录音导出失败。请刷新网页再试。");
+  }
+}
+
+function audioExtension(type) {
+  if (type.includes("mp4")) return "m4a";
+  if (type.includes("mpeg")) return "mp3";
+  if (type.includes("wav")) return "wav";
+  if (type.includes("ogg")) return "ogg";
+  return "webm";
 }
 
 function speak(text) {
@@ -1629,18 +1714,20 @@ function saveStudents() {
   alert(`已保存 ${students.length} 名学生。`);
 }
 
-function renderDashboard() {
+async function renderDashboard() {
+  await refreshAttemptsFromGoogleSheet();
+  const allAttempts = attempts;
   const vocabAttempts = attempts.filter((item) => item.subject !== "math");
-  $("#total-attempts").textContent = vocabAttempts.length;
-  const correctCount = vocabAttempts.filter((item) => item.correct).length;
-  $("#overall-accuracy").textContent = vocabAttempts.length ? `${Math.round((correctCount / vocabAttempts.length) * 100)}%` : "0%";
+  $("#total-attempts").textContent = allAttempts.length;
+  const correctCount = allAttempts.filter((item) => item.correct).length;
+  $("#overall-accuracy").textContent = allAttempts.length ? `${Math.round((correctCount / allAttempts.length) * 100)}%` : "0%";
 
   const wordRows = groupBy(vocabAttempts.filter((item) => !item.correct), (item) => item.word);
   $("#needs-review").textContent = Object.keys(wordRows).length;
 
   $("#student-stats").innerHTML = students
     .map((student) => {
-      const rows = vocabAttempts.filter((item) => item.student === student);
+      const rows = allAttempts.filter((item) => item.student === student);
       const right = rows.filter((item) => item.correct).length;
       const wrong = rows.length - right;
       const rate = rows.length ? `${Math.round((right / rows.length) * 100)}%` : "-";
@@ -1654,10 +1741,11 @@ function renderDashboard() {
     .slice(0, 12);
   $("#word-stats").innerHTML = ranked.length
     ? ranked.map((row) => `<tr><td>${escapeHtml(row.word)}</td><td>${escapeHtml(row.unit)}</td><td>${row.wrong}</td><td>${modeName(row.mode)}</td></tr>`).join("")
-    : `<tr><td colspan="4">还没有错误记录。</td></tr>`;
+    : `<tr><td colspan="4">${GOOGLE_SHEET_WEB_APP_URL ? "还没有错误记录。请点“刷新记录”，或先确认 Google Sheet 里有 Attempts 记录。" : "还没有错误记录。"}</td></tr>`;
 }
 
-function renderProfile() {
+async function renderProfile() {
+  await refreshAttemptsFromGoogleSheet();
   const student = getStudentNumber();
   $("#profile-student-input").value = student;
   if (!student) {
@@ -1830,6 +1918,89 @@ async function postGoogleSheetAttempt(attempt) {
   }
 }
 
+async function refreshAttemptsFromGoogleSheet() {
+  if (!GOOGLE_SHEET_WEB_APP_URL) return;
+  const message = $("#dashboard-message");
+  if (message) message.textContent = "正在从 Google Sheet 读取记录...";
+  try {
+    const result = await loadGoogleSheetJsonp();
+    if (Array.isArray(result.attempts)) {
+      attempts = mergeAttempts(attempts, result.attempts.map(normalizeAttempt));
+      saveJson(STORAGE_KEYS.attempts, attempts);
+      if (message) message.textContent = `已读取 Google Sheet 记录：${result.attempts.length} 条。`;
+    } else if (message) {
+      message.textContent = "Google Sheet 还没有返回记录。";
+    }
+  } catch {
+    if (message) message.textContent = "暂时读不到 Google Sheet。请确认 Apps Script 已重新发布。";
+  }
+}
+
+function loadGoogleSheetJsonp() {
+  return new Promise((resolve, reject) => {
+    const callbackName = `grade3SheetCallback_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const script = document.createElement("script");
+    const separator = GOOGLE_SHEET_WEB_APP_URL.includes("?") ? "&" : "?";
+    script.src = `${GOOGLE_SHEET_WEB_APP_URL}${separator}callback=${callbackName}&t=${Date.now()}`;
+    script.async = true;
+
+    const cleanup = () => {
+      delete window[callbackName];
+      script.remove();
+    };
+
+    window[callbackName] = (value) => {
+      cleanup();
+      resolve(value || {});
+    };
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("Google Sheet load failed"));
+    };
+    document.body.appendChild(script);
+  });
+}
+
+function normalizeAttempt(attempt) {
+  return {
+    time: attempt.time || "",
+    subject: attempt.subject || "",
+    student: formatStudentNumber(attempt.student).padStart(2, "0"),
+    unit: attempt.unit || "",
+    word: attempt.word || "",
+    mode: attempt.mode || "",
+    operation: attempt.operation || "",
+    topic: attempt.topic || "",
+    problem: attempt.problem || "",
+    answer: attempt.answer || "",
+    correctAnswer: attempt.correctAnswer || "",
+    correct: attempt.correct === true || String(attempt.correct).toUpperCase() === "TRUE" || String(attempt.correct) === "正确",
+  };
+}
+
+function mergeAttempts(current, incoming) {
+  const seen = new Set();
+  return [...current, ...incoming].filter((attempt) => {
+    const key = [
+      attempt.time,
+      attempt.student,
+      attempt.subject,
+      attempt.unit,
+      attempt.word,
+      attempt.mode,
+      attempt.operation,
+      attempt.topic,
+      attempt.problem,
+      attempt.answer,
+      attempt.correctAnswer,
+      attempt.correct ? "1" : "0",
+    ].join("|");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 async function clearServerAttempts() {
   if (!apiAvailable) return;
   try {
@@ -1842,6 +2013,10 @@ async function clearServerAttempts() {
 
 function downloadFile(filename, content) {
   const blob = new Blob(["\ufeff", content], { type: "text/plain;charset=utf-8" });
+  downloadBlob(filename, blob);
+}
+
+function downloadBlob(filename, blob) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -1849,6 +2024,66 @@ function downloadFile(filename, content) {
   link.click();
   URL.revokeObjectURL(url);
 }
+
+function createZipBlob(files) {
+  const encoder = new TextEncoder();
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+
+  files.forEach((file) => {
+    const nameBytes = encoder.encode(file.name);
+    const bytes = file.bytes;
+    const crc = crc32(bytes);
+    const localHeader = zipHeader([
+      0x04034b50, 20, 2048, 0, 0, 0, crc, bytes.length, bytes.length, nameBytes.length, 0,
+    ], [4, 2, 2, 2, 2, 2, 4, 4, 4, 2, 2]);
+    localParts.push(localHeader, nameBytes, bytes);
+
+    const centralHeader = zipHeader([
+      0x02014b50, 20, 20, 2048, 0, 0, 0, crc, bytes.length, bytes.length, nameBytes.length, 0, 0, 0, 0, 0, offset,
+    ], [4, 2, 2, 2, 2, 2, 2, 4, 4, 4, 2, 2, 2, 2, 2, 4, 4]);
+    centralParts.push(centralHeader, nameBytes);
+    offset += localHeader.length + nameBytes.length + bytes.length;
+  });
+
+  const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+  const endHeader = zipHeader([
+    0x06054b50, 0, 0, files.length, files.length, centralSize, offset, 0,
+  ], [4, 2, 2, 2, 2, 4, 4, 2]);
+
+  return new Blob([...localParts, ...centralParts, endHeader], { type: "application/zip" });
+}
+
+function zipHeader(values, sizes) {
+  const length = sizes.reduce((sum, size) => sum + size, 0);
+  const bytes = new Uint8Array(length);
+  const view = new DataView(bytes.buffer);
+  let offset = 0;
+  values.forEach((value, index) => {
+    const size = sizes[index];
+    if (size === 2) view.setUint16(offset, value, true);
+    if (size === 4) view.setUint32(offset, value, true);
+    offset += size;
+  });
+  return bytes;
+}
+
+function crc32(bytes) {
+  let crc = -1;
+  for (const byte of bytes) {
+    crc = (crc >>> 8) ^ CRC32_TABLE[(crc ^ byte) & 0xff];
+  }
+  return (crc ^ -1) >>> 0;
+}
+
+const CRC32_TABLE = Array.from({ length: 256 }, (_, index) => {
+  let value = index;
+  for (let bit = 0; bit < 8; bit += 1) {
+    value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+  }
+  return value >>> 0;
+});
 
 function csvCell(value) {
   return `"${String(value || "").replace(/"/g, '""')}"`;

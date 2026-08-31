@@ -542,6 +542,13 @@ textarea {
   max-width: 220px;
 }
 
+.recording-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .recording-message {
   min-height: 26px;
   color: var(--accent);
