@@ -70,13 +70,9 @@ main {
 }
 
 .nav-stack {
-  display: grid;
+  display: flex;
   gap: 8px;
   justify-items: end;
-}
-
-.vocab-tabs {
-  padding-top: 2px;
 }
 
 .tab,
@@ -552,6 +548,12 @@ textarea {
 .recording-message {
   min-height: 26px;
   color: var(--accent);
+  font-weight: 800;
+}
+
+.recording-summary {
+  margin: 0;
+  color: var(--muted);
   font-weight: 800;
 }
 

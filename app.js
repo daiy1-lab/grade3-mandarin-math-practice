@@ -1,8 +1,10 @@
 const STORAGE_KEYS = {
   vocab: "grade3_vocab_items",
+  vocabVersion: "grade3_vocab_version",
   students: "grade3_students",
   attempts: "grade3_attempts",
 };
+const CURRENT_VOCAB_VERSION = "20260830-units-1-24";
 const AUDIO_DB_NAME = "grade3_vocab_audio";
 const AUDIO_STORE_NAME = "recordings";
 const TEACHER_PASSWORD = "660266";
@@ -395,7 +397,7 @@ const SAMPLE_TEXT = `第一单元,美丽,měi lì,很好看,丑,形容词,美丽
 第二十四单元,高兴,gāo xìng,心里开心,伤心|难过,形容词,高兴地笑|非常高兴
 第二十四单元,庆祝,qìng zhù,因为高兴一起活动,难过|哀悼,动词,庆祝生日|庆祝节日`;
 
-let vocab = loadJson(STORAGE_KEYS.vocab, parseVocab(SAMPLE_TEXT));
+let vocab = loadInitialVocab();
 let students = loadJson(STORAGE_KEYS.students, DEFAULT_STUDENTS);
 let attempts = loadJson(STORAGE_KEYS.attempts, []);
 let selectedMode = MODES[0].id;
@@ -423,6 +425,20 @@ function loadJson(key, fallback) {
 
 function saveJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function loadInitialVocab() {
+  const sample = parseVocab(SAMPLE_TEXT);
+  const saved = loadJson(STORAGE_KEYS.vocab, []);
+  const savedVersion = localStorage.getItem(STORAGE_KEYS.vocabVersion);
+  if (!Array.isArray(saved) || !saved.length) return sample;
+  if (savedVersion !== CURRENT_VOCAB_VERSION && looksLikeOldExperimentVocab(saved)) return sample;
+  return saved;
+}
+
+function looksLikeOldExperimentVocab(items) {
+  const words = new Set(items.map((item) => item.word));
+  return words.has("鲜艳") || words.has("很漂亮") || !words.has("美丽") || items.length < 100;
 }
 
 function splitList(value) {
@@ -626,6 +642,7 @@ function buildCollocationDistractors(item, correct) {
 async function init() {
   vocab = vocab.map(normalizeVocabItem);
   saveJson(STORAGE_KEYS.vocab, vocab);
+  localStorage.setItem(STORAGE_KEYS.vocabVersion, CURRENT_VOCAB_VERSION);
   await loadServerState();
   students = normalizeStudentList(students).length ? normalizeStudentList(students) : DEFAULT_STUDENTS;
   renderTabs();
@@ -662,15 +679,9 @@ function showView(view) {
   $$(".view").forEach((item) => item.classList.remove("active"));
 
   $(`#${view}-view`).classList.add("active");
-  const isVocabView = ["practice", "teacher", "dashboard"].includes(view);
-  $("#vocab-tabs").classList.toggle("hidden", !isVocabView);
-
-  const subject = view === "math" ? "math" : view === "profile" ? "profile" : view === "dashboard" ? "dashboard" : isVocabView ? "vocab" : "home";
+  const subject = view === "math" ? "math" : view === "profile" ? "profile" : view === "dashboard" ? "dashboard" : view === "teacher" ? "teacher" : view === "practice" ? "vocab" : "home";
   const subjectTab = $(`[data-subject="${subject}"]`);
   if (subjectTab) subjectTab.classList.add("active");
-
-  const vocabTab = $(`[data-vocab-tab="${view}"]`);
-  if (vocabTab) vocabTab.classList.add("active");
 
   if (view === "dashboard") renderDashboard();
   if (view === "profile") renderProfile();
@@ -800,7 +811,14 @@ async function renderRecordingList() {
     list.innerHTML = `<p class="help">录音保存区打不开。请刷新网页再试。</p>`;
     return;
   }
-  list.innerHTML = rows
+  const matchedCount = rows.filter((item) => savedKeys.has(audioKey(item))).length;
+  const statusMessage = savedKeys.size
+    ? `这个浏览器里找到 ${savedKeys.size} 个录音，当前显示的词语匹配 ${matchedCount} 个。`
+    : "这个网址下面还没有保存过录音。";
+  const mismatchMessage = savedKeys.size && matchedCount === 0
+    ? " 可能是以前在别的网址、旧词库或另一个浏览器里录的。你仍然可以点“导出录音包”试着导出已有录音。"
+    : "";
+  list.innerHTML = `<p class="recording-summary">${escapeHtml(statusMessage + mismatchMessage)}</p>` + rows
     .map((item) => {
       const key = audioKey(item);
       const saved = savedKeys.has(key);
@@ -1699,6 +1717,7 @@ function importVocab() {
   }
   vocab = parsed;
   saveJson(STORAGE_KEYS.vocab, vocab);
+  localStorage.setItem(STORAGE_KEYS.vocabVersion, CURRENT_VOCAB_VERSION);
   saveServerSection("/api/vocab", { vocab });
   renderSelectors();
   renderTeacher();
@@ -1929,10 +1948,10 @@ async function refreshAttemptsFromGoogleSheet() {
       saveJson(STORAGE_KEYS.attempts, attempts);
       if (message) message.textContent = `已读取 Google Sheet 记录：${result.attempts.length} 条。`;
     } else if (message) {
-      message.textContent = "Google Sheet 还没有返回记录。";
+      message.textContent = "Google Sheet 没有返回 Attempts 记录。请确认 Apps Script 代码已经换成最新版，并点 Deploy。";
     }
   } catch {
-    if (message) message.textContent = "暂时读不到 Google Sheet。请确认 Apps Script 已重新发布。";
+    if (message) message.textContent = "暂时读不到 Google Sheet。请确认 Apps Script 已更新最新版，并且 Manage deployments 里点了 Deploy。";
   }
 }
 
@@ -1943,8 +1962,10 @@ function loadGoogleSheetJsonp() {
     const separator = GOOGLE_SHEET_WEB_APP_URL.includes("?") ? "&" : "?";
     script.src = `${GOOGLE_SHEET_WEB_APP_URL}${separator}callback=${callbackName}&t=${Date.now()}`;
     script.async = true;
+    let timeoutId = 0;
 
     const cleanup = () => {
+      window.clearTimeout(timeoutId);
       delete window[callbackName];
       script.remove();
     };
@@ -1957,6 +1978,10 @@ function loadGoogleSheetJsonp() {
       cleanup();
       reject(new Error("Google Sheet load failed"));
     };
+    timeoutId = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("Google Sheet load timed out"));
+    }, 8000);
     document.body.appendChild(script);
   });
 }

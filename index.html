@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>三年级练习站</title>
-    <link rel="stylesheet" href="styles.css?v=20260830-audio-export" />
+    <link rel="stylesheet" href="styles.css?v=20260830-class-records" />
   </head>
   <body>
     <header class="topbar">
@@ -18,11 +18,8 @@
           <button class="tab" data-subject="vocab" data-view="practice">中文词语</button>
           <button class="tab" data-subject="math" data-view="math">数学练习</button>
           <button class="tab" data-subject="profile" data-view="profile">我的练习情况</button>
-          <button class="tab" data-subject="dashboard" data-view="dashboard">全班情况</button>
-        </nav>
-        <nav class="tabs vocab-tabs hidden" id="vocab-tabs" aria-label="中文词语导航">
-          <button class="tab" data-vocab-tab="teacher" data-view="teacher">教师词语表</button>
-          <button class="tab" data-vocab-tab="dashboard" data-view="dashboard">全班记录</button>
+          <button class="tab" data-subject="dashboard" data-view="dashboard">全班记录</button>
+          <button class="tab" data-subject="teacher" data-view="teacher">教师词语表</button>
         </nav>
       </div>
     </header>
@@ -47,7 +44,7 @@
           </button>
           <button class="home-option" type="button" data-home-view="dashboard">
             <span class="home-icon">班</span>
-            <strong>全班情况</strong>
+            <strong>全班记录</strong>
             <span>查看全班答题和需要多练的内容</span>
           </button>
         </div>
@@ -206,7 +203,7 @@
         <div class="dashboard-header">
           <div>
             <p class="eyebrow">答题记录</p>
-            <h2>全班练习情况</h2>
+            <h2>全班记录</h2>
           </div>
           <div class="dashboard-actions">
             <button id="refresh-dashboard-btn" class="primary-btn">刷新记录</button>
@@ -259,7 +256,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.28.2/dist/index.js"></script>
-    <script src="config.js?v=20260830-audio-export"></script>
-    <script src="app.js?v=20260830-audio-export"></script>
+    <script src="config.js?v=20260830-class-records"></script>
+    <script src="app.js?v=20260830-class-records"></script>
   </body>
 </html>
